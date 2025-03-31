@@ -58,17 +58,33 @@ def computeColorFromSH(deg, pos, campos, sh):
     # The implementation is loosely based on code for
     # "Differentiable Point-Based Radiance Fields for
     # Efficient View Synthesis" by Zhang et al. (2022)
+    """ 
+    球谐函数的颜色计算 
 
+    Args:
+        deg (int): 球谐函数的阶数 例如3 
+        pos (np.ndarray): 高斯球中心位置 [x, y, z] (3,)
+        campos (np.ndarray): 相机位置 [xc, yc, zc] (3,)
+        sh (np.ndarray): 球谐函数系数矩阵 3阶就有16行3列 
+
+    Returns:
+        result (np.ndarray): 球谐函数计算的颜色值 [r, g, b] (3,)
+    """
+
+    # 计算从相机到高斯球中心的连线方向 
     dir = pos - campos
-    dir = dir / np.linalg.norm(dir)
+    dir = dir / np.linalg.norm(dir) # 归一化 这里就让接下来公式计算中的r=1 
 
-    result = SH_C0 * sh[0]
+    # 0阶的结果 
+    result = SH_C0 * sh[0] # (3,) 
 
     if deg > 0:
+        # +1阶的结果 
         x, y, z = dir
-        result = result - SH_C1 * y * sh[1] + SH_C1 * z * sh[2] - SH_C1 * x * sh[3]
+        result = result - SH_C1 * y * sh[1] + SH_C1 * z * sh[2] - SH_C1 * x * sh[3] # (3,)
 
         if deg > 1:
+            # +2阶的结果 
             xx = x * x
             yy = y * y
             zz = z * z
@@ -84,6 +100,7 @@ def computeColorFromSH(deg, pos, campos, sh):
                 + SH_C2[4] * (xx - yy) * sh[8]
             )
 
+            # +3阶的结果 
             if deg > 2:
                 result = (
                     result

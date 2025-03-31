@@ -130,9 +130,10 @@ class Rasterizer:
 
             # transform point, from world to ndc
             # Notice, projmatrix already processed as mvp matrix
-            p_hom = transformPoint4x4(p_orig, projmatrix)
+            p_hom = transformPoint4x4(p_orig, projmatrix) # 观测变换 + 投影变换 
             p_w = 1 / (p_hom[3] + 0.0000001)
-            p_proj = [p_hom[0] * p_w, p_hom[1] * p_w, p_hom[2] * p_w]
+            # p_proj这个点已经在正方体里了 
+            p_proj = [p_hom[0] * p_w, p_hom[1] * p_w, p_hom[2] * p_w] # 归一化 使他齐次坐标中最后一个是1 
 
             # compute 3d covarance by scaling and rotation parameters
             scale = scales[idx]
@@ -162,7 +163,7 @@ class Rasterizer:
             lambda1 = mid + sqrt(max(0.1, mid * mid - det))
             lambda2 = mid - sqrt(max(0.1, mid * mid - det))
             my_radius = ceil(3 * sqrt(max(lambda1, lambda2)))
-            point_image = [ndc2Pix(p_proj[0], W), ndc2Pix(p_proj[1], H)]
+            point_image = [ndc2Pix(p_proj[0], W), ndc2Pix(p_proj[1], H)] # 把均值从NDC坐标转换到像素坐标 
 
             radii.append(my_radius)
             points_xy_image.append(point_image)
@@ -199,42 +200,49 @@ class Rasterizer:
                 for idx in point_list:
 
                     # init helper variables, transmirrance
-                    T = 1
+                    T = 1 # 开始肯定没有被遮挡 T就是1 
 
                     # Resample using conic matrix
                     # (cf. "Surface Splatting" by Zwicker et al., 2001)
-                    xy = points_xy_image[idx]  # center of 2d gaussian
+                    xy = points_xy_image[idx]  # center of 2d gaussian 当前2d高斯椭球的中心 
                     d = [
                         xy[0] - pixf[0],
                         xy[1] - pixf[1],
-                    ]  # distance from center of pixel
+                    ]  # distance from center of pixel [dx, dy] 
+                    # conic_opacity = [\sigma_x^-1, \sigma_xy^-1, \sigma_y^-1, opacity透明度]
                     con_o = conic_opacity[idx]
+                    # power就是 -\frac{1}{2}(x-\mu)T\Sigma^-1(x-\mu)的二维形态
                     power = (
                         -0.5 * (con_o[0] * d[0] * d[0] + con_o[2] * d[1] * d[1])
                         - con_o[1] * d[0] * d[1]
                     )
-                    if power > 0:
+                    if power > 0: # 像素点离高斯球太远了 没有影响了 
                         continue
 
                     # Eq. (2) from 3D Gaussian splatting paper.
                     # Compute color
+                    # 计算透明度 高斯椭球自身的透明度 con_o[3]
+                    # e^{power} 是这个高斯椭球对像素点的影响程度 
                     alpha = min(0.99, con_o[3] * np.exp(power))
-                    if alpha < 1 / 255:
+                    if alpha < 1 / 255: # 太小就不考虑了 
                         continue
+
+                    # 计算T 就是不被遮挡的概率 
                     test_T = T * (1 - alpha)
-                    if test_T < 0.0001:
+                    if test_T < 0.0001: # 如果前面的椭球非常有能量已经占满这个像素了 那后面的椭球也就不用了
                         break
 
                     # Eq. (3) from 3D Gaussian splatting paper.
                     color = features[idx]
                     for ch in range(3):
-                        C[ch] += color[ch] * alpha * T
+                        C[ch] += color[ch] * alpha * T # 按照颜色加权公式把这个高斯椭球的颜色叠加到这个像素上 
 
-                    T = test_T
+                    T = test_T # T没有到极限 把他给下一个高斯椭球 接着遍历 
 
                 # get final color
                 for ch in range(3):
-                    out_color[j, i, ch] = C[ch] + T * bg_color[ch]
+                    # alpha blending 如果到了最后一个高斯椭球 然而不透明度还有一定的限度(上限是1) 就用背景颜色把他补上
+                    out_color[j, i, ch] = C[ch] + T * bg_color[ch] 
 
         return out_color
 

@@ -74,7 +74,20 @@ def computeCov2D(mean, focal_x, focal_y, tan_fovx, tan_fovy, cov3D, viewmatrix):
     # and 31 in "EWA Splatting" (Zwicker et al., 2002).
     # Additionally considers aspect / scaling of viewport.
     # Transposes used to account for row-/column-major conventions.
+    """ 
+    计算协方差矩阵的变换 
 
+    Args:
+        mean (np.array): 3DGS椭球在世界坐标系下的中心点 
+        focal_x (float): focal length in x x方向的焦距 对应J中的nx 
+        focal_y (float): focal length in y y方向的焦距 对应J中的ny 
+        tan_fovx (float): tan of field of view in x x方向的视场角 
+        tan_fovy (float): tan of field of view in y y方向的视场角 
+        cov3D (np.array): 3D covariance matrix 世界坐标系下3DGS椭球的协方差矩阵 
+        viewmatrix (np.array): 4x4 view matrix 从世界坐标系到相机坐标系的变换矩阵(观测变换矩阵) 
+    """
+
+    # 找到中心点在相机坐标系中的位置 在他的附件才是符合雅克比矩阵的条件的
     t = transformPoint4x3(mean, viewmatrix)
 
     limx = 1.3 * tan_fovx
@@ -84,22 +97,30 @@ def computeCov2D(mean, focal_x, focal_y, tan_fovx, tan_fovy, cov3D, viewmatrix):
     t[0] = min(limx, max(-limx, txtz)) * t[2]
     t[1] = min(limy, max(-limy, tytz)) * t[2]
 
+    # 计算雅克比矩阵 
     J = np.array(
         [
             [focal_x / t[2], 0, -(focal_x * t[0]) / (t[2] * t[2])],
             [0, focal_y / t[2], -(focal_y * t[1]) / (t[2] * t[2])],
-            [0, 0, 0],
+            [0, 0, 0], # 正交矩阵的最后也就不考虑z方向了 
         ]
     )
-    W = viewmatrix[:3, :3]
-    T = np.dot(J, W)
 
-    cov = np.dot(T, cov3D)
-    cov = np.dot(cov, T.T)
+    # 按公式从世界坐标系下的协方差矩阵求到视椎被压缩后的状态 
+    W = viewmatrix[:3, :3] # (3, 3) 
+    T = np.dot(J, W) # JW 
+
+    cov = np.dot(T, cov3D) # JWV_k^''
+    cov = np.dot(cov, T.T) # JWV_k^''W^TJ^T (2, 2)
 
     # Apply low-pass filter
     # Every Gaussia should be at least one pixel wide/high
     # Discard 3rd row and column
+    # 现在的cov就是2维的协方差矩阵了 即 cov = 
+    # \begin{bmatrix} 
+    # \sigma_x^2 & \sigma_xy \\ 
+    # \sigma_yx & \sigma_y^2 
+    # \end{bmatrix}
     cov[0, 0] += 0.3
     cov[1, 1] += 0.3
     return [cov[0, 0], cov[0, 1], cov[1, 1]]
