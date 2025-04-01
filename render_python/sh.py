@@ -63,8 +63,8 @@ def computeColorFromSH(deg, pos, campos, sh):
 
     Args:
         deg (int): 球谐函数的阶数 例如3 
-        pos (np.ndarray): 高斯球中心位置 [x, y, z] (3,)
-        campos (np.ndarray): 相机位置 [xc, yc, zc] (3,)
+        pos (np.ndarray): 世界坐标系下高斯椭球的均值 [x, y, z] (3,)
+        campos (np.ndarray): 世界坐标系下的相机位置 [xc, yc, zc] (3,)
         sh (np.ndarray): 球谐函数系数矩阵 3阶就有16行3列 
 
     Returns:
