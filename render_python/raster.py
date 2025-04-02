@@ -52,9 +52,19 @@ def transformPoint4x3(p, matrix):
     return transformed
 
 
-# covariance = RS[S^T][R^T]
 def computeCov3D(scale, mod, rot):
-    """ 用缩放和旋转矩阵计算在世界坐标系下一个高斯椭球的协方差矩阵 """
+    """ 
+    用缩放和旋转矩阵计算在世界坐标系下一个高斯椭球的协方差矩阵 
+    \Sigma = R \cdot S \cdot S^T \cdot R^T 
+    
+    Args: 
+        scale (np.ndarray): 当前高斯椭球的缩放参数 (3,) 
+        mod (float): 调整缩放参数的倍数 
+        rot (np.ndarray): 当前高斯椭球的旋转矩阵 (3, 3) 
+    
+    Returns:
+        cov3D (np.ndarray): 当前高斯椭球的协方差矩阵 (3, 3) 
+    """
     # create scaling matrix
     S = np.array(
         [[scale[0] * mod, 0, 0], [0, scale[1] * mod, 0], [0, 0, scale[2] * mod]]

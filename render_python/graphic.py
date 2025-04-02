@@ -12,7 +12,8 @@ import numpy as np
 
 
 def getWorld2View2(R, t, translate=np.array([0.0, 0.0, 0.0]), scale=1.0):
-    """ 获得相机的外参矩阵 
+    """ 
+    获得相机的外参矩阵 (世界坐标系转相机坐标系) (viewmatrix) (观测变换)
     
     Args: 
         R (np.ndarray): 旋转矩阵 (3, 3) 
@@ -21,7 +22,8 @@ def getWorld2View2(R, t, translate=np.array([0.0, 0.0, 0.0]), scale=1.0):
         scale (float): 相机中心的缩放量 
     
     Returns: 
-        Rt (np.ndarray): 外参矩阵 (4, 4) """
+        Rt (np.ndarray): 外参矩阵 (4, 4) 
+    """
     # 组装相机的外参矩阵 
     Rt = np.zeros((4, 4))
     Rt[:3, :3] = R.transpose()
